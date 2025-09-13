@@ -70,10 +70,102 @@ drop_table () {
 insert_into_table () {
 	display "insert_into_table"
 }
+display_read_columns() {
+	local -n cols=$1
+	display "Columns:" "g"
+	for i in "${!cols[@]}";do
+		echo "$((i+1)) : ${cols[i]}"
+	done
+	display "Enter columns to select:"
+	display "Use '*' for all columns, or comma-separated numbers"
+	read selected
+	return "$selected"
+}
 
+check_columns() {
+	local -n cols=$1
+	local total=$2  
+	if [[ ${#cols[@]} == 1 ]]; then
+		if [[ "${cols[0]}" == "*" ]]; then
+			return 0
+		elif [[ "${cols[0] =~ ^[0-9]+$}" ]] && (( cols[0] >= 1 && cols[0] <= total )); then
+			return 0
+		else
+			return 1
+		fi
+	fi
+	
+	seen=()
+	for col in "${cols[@]}"; do
+		if [[ ! "$col" =~ ^[0-9]+$ ]]; then
+			return 1
+		fi
+		
+		if (( col < 1 || col > total )); then
+			return 1
+		fi
+		
+		if [[ " ${seen[*]} " =~ " $col " ]]; then
+			return 1
+		fi
+		
+		seen+=("$col")
+	done
+	
+	return 0
+}
 select_from_table () {
 	display "select_from_table"
+	display "Enter the table name:" "g"
+	read table_name
+	display "you chosed"
+	while [[ ! -d $table_name ]]; do
+		display "Table '$table_name' does not exist." "r"
+		display "Enter a valid table name:"
+		read table_name
+	done
+	
+	schema_file="$table_name/schema"
+    	data_file="$table_name/data"
+    	
+	columns=($(cut -d, -f1 "$schema_file"))
+	
+	selected=$(display_read_columns columns)
+	selected_cols=($(echo "$selected" | tr -d ' ' | tr ',' ' '))
+	while ! check_columns selected_cols "${#columns[@]}"; do
+		display "Wrong Selection" "r"
+		selected=$(display_read_columns columns)
+		selected_cols=($(echo "$selected" | tr -d ' ' | tr ',' ' '))
+	done
+	
+	display "How many rows do you want to display? Enter a number or 'all'." "g"
+	read rows
+	
+	total_rows=$(wc -l < "$data_file")
+	
+	display "============================================"
+	printf "%-5s" "Row"
+	for col in ${columns[@]}; do
+		printf "%-10s" "$col"
+	done
+	display "============================================"
+	
+	if [[ "$rows" == 'all' ]]; then
+		row_num=1
+		while read -r line; do
+			printf "%-5s" "$row_num"
+		
+			for val in $(echo "$line" | tr ',' ' '); do
+				printf "%-10s" "$val"
+			done
+			
+			echo
+			((row_num++))
+		done < "$data_file"
+	fi
 }
+
+
 
 delete_from_table () {
 	display "delete_from_table"
