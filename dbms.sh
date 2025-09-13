@@ -105,7 +105,7 @@ connect_db() {
       display "🔁 back to 'dbms' script" "g"
       cd ..   # go out after cd (cause error -> create db in db)
     else
-      display "Failed to connect to database '$db_name'" "r"
+      display "Failed to run db_manager" "r"
     fi
   else
     display "Failed to connect to database '$db_name'" "r"
