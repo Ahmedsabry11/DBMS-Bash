@@ -52,11 +52,19 @@ create_table () {
 }
 
 list_tables () {
-	display "list_tables"
+	display "Tables List:"
+  ls -l | grep '^d' | awk '{print $9}'  # list directories only
 }
 
 drop_table () {
-	display "drop_table"
+	display "Drop Table:"
+  read table_name
+  if [ -d "$table_name" ]; then
+    rm -r "$table_name"
+    display "Table $table_name dropped successfully!" "g"
+  else
+    display "Table $table_name does not exist!" "r"
+  fi
 }
 
 insert_into_table () {
