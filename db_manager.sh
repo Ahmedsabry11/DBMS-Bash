@@ -83,7 +83,86 @@ update_table () {
 	display "update_table"
 }
 
-# DB mangaer menu
+read_constraints() {
+
+  read -p "Do you want to add a WHERE clause? (y/n): " ans
+  if [ "$ans" = "y" ]; then
+    read -p "Enter condition (e.g., age=20 AND name=Ali): " condition
+
+    # read columns from schema 
+    # IFS=',' read -r -a columns < "schema" 
+    OLDIFS=$IFS   # Save current value
+    columns=()   # column names
+    types=() # column types
+    keys=()  # column keys (constraints)
+    
+    schema_file="${table_name}_schema"
+    # Read schema line by line
+    while IFS=',' read -r cname ctype cconstraint; do
+      columns+=("$cname")
+      types+=("$ctype")
+
+      # If no constraint → store empty string
+      if [[ -z "$cconstraint" ]]; then
+        keys+=("NONE")
+      else
+        keys+=("$cconstraint")
+      fi
+    done < "$schema_file"
+
+    # print columns for debugging
+    for col in "${columns[@]}"; do
+      echo "Column: $col"
+    done
+    IFS=$OLDIFS   # Restore original value
+
+
+    awk_expr=""
+    tokens=($condition)   
+
+    for token in "${tokens[@]}"; do
+      if [ "$token" = "AND" ]; then
+        awk_expr="$awk_expr &&"
+      elif [ "$token" = "OR" ]; then
+        awk_expr="$awk_expr ||"
+      elif [[ "$token" == *=* ]]; then
+        col=$(echo "$token" | cut -d'=' -f1) # column name
+        val=$(echo "$token" | cut -d'=' -f2) # value
+
+        # Find column index
+        col_index=-1
+        for i in "${!columns[@]}"; do
+          cname=${columns[$i]}
+          if [ "$cname" = "$col" ]; then
+            col_index=$((i+1))
+            break
+          fi
+        done
+
+        if [ $col_index -eq -1 ]; then
+          echo "Column '$col' not found!"
+          return
+        fi
+
+        # Append condition to awk expression
+        awk_expr="$awk_expr \$${col_index}==\"$val\""
+      fi
+    done
+
+
+    # TODO: Print schema
+    head -n1 "${table_name}_schema" | column -t -s','
+
+    # use awk to filter rows based on the condition
+    awk -F',' "($awk_expr)" "${table_name}_data" | column -t -s','
+
+  else
+    # Show all
+    column -t -s',' "${table_name}_data" | less
+  fi
+}
+
+# DB manager menu
 db_manager_menu=("Create Table" "List Tables" "Drop Table" "Insert Into Table" "Select From Table" "Delete From Table" "Update Table" "Exit")
 
 while true; do
