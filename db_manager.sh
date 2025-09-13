@@ -209,7 +209,27 @@ select_from_table () {
 
 
 delete_from_table () {
-	display "delete_from_table"
+	display "Delete Record"
+  display "Enter the table name:" "g"
+  read table_name
+
+  while [[ ! -d $table_name ]]; do
+    display "Table '$table_name' does not exist." "r"
+    display "Enter a valid table name:"
+    read table_name
+  done
+
+  table_name="$table_name"
+  schema_file="${table_name}/schema"
+  data_file="${table_name}/data"
+
+  # delete records with conditions
+  read_constraints
+
+  # use awk to delete rows based on the condition
+  awk -F',' "!($awk_expr)" "${data_file}" > "${data_file}.tmp" && mv "${data_file}.tmp" "${data_file}"
+
+  display "Records deleted successfully." "g"
 }
 
 update_table () {
