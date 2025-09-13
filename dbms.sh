@@ -45,7 +45,7 @@ display_menu() {
     return
   fi
   
-  local -n menu=$1  # nameref to the passed array
+  local -n menu=$1  # refence to the passed array
 
   # print menu options (loop over indices)
   for i in "${!menu[@]}"; do
@@ -103,6 +103,7 @@ connect_db() {
     if source ../db_manager.sh 2>/dev/null; then
       display "Disconnected from database '$db_name'" "g"
       display "🔁 back to 'dbms' script" "g"
+      cd ..   # go out after cd (cause error -> create db in db)
     else
       display "Failed to connect to database '$db_name'" "r"
     fi
@@ -122,7 +123,7 @@ drop_db() {
     read db_name
 
 		# i don't want to drop a db
-		if [ $db_name -eq -1 ]; then
+    if [ "$db_name" = "-1" ]; then
 			return
 		fi
 

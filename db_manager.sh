@@ -2,9 +2,53 @@
 
 display "Hi! (DB manager)" "g"
 
-# Functions ------------------------------------------------------------------------------------------------------
+# helper functions
+validate_table_name() {
+  while [ -e $table_name ]; do
+    display "Can't have more than 1 table with the same name!" "r"
+    display "Enter a valid DB name. or -1 to exit" "g"
+    read table_name
+
+    # i don't want to create the table
+		if [ "$table_name" = "-1" ]; then
+			return 1    # the the caller we want to exit
+		fi
+  done
+}
+
+create_table_files() {
+  # create the table directory
+  if mkdir $table_name 2>/dev/null; then
+    # create the data & schema files
+    schema_path="${table_name}/${table_name}_schema"
+    data_path="${table_name}/${table_name}_data"
+
+    if touch $data_path && touch $schema_path 2>/dev/null; then
+      display "created table ${table_name}!" "g"
+    else
+      display "Failed to create table $table_name files" "r"
+    fi
+  else
+    display "Failed to create table $table_name directory" "r"
+  fi
+}
+
+# ------------------------------------------------------------------------------------------------------
+# functions 
 create_table () {
-	display "create_table"
+	# 1. get the table name and verify no other tables with the same name
+  display "Enter the table name" "g"
+  read table_name
+
+  # avoid having 2 tables with the same name
+  if ! validate_table_name; then
+    return
+  fi
+
+  # 2. create a dir for the table with 2 files (schema, data)
+  create_table_files
+  
+  # 3. get columns and conditions (table structure)
 }
 
 list_tables () {
