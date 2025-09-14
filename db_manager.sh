@@ -333,8 +333,8 @@ select_from_table () {
 		read table_name
 	done
 	
-	schema_file="$table_name/schema"
-    	data_file="$table_name/data"
+	schema_file="${table_name}/${table_name}_schema"
+    data_file="${table_name}/${table_name}_data"
     	
 	columns=($(cut -d, -f1 "$schema_file"))
 	
@@ -432,8 +432,8 @@ delete_from_table () {
   done
 
   table_name="$table_name"
-  schema_file="${table_name}/schema"
-  data_file="${table_name}/data"
+  schema_file="${table_name}/${table_name}_schema"
+  data_file="${table_name}/${table_name}_data"
 
   # delete records with conditions
   read_constraints
