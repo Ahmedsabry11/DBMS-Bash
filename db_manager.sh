@@ -245,9 +245,12 @@ check_columns() {
 
 read_constraints() {
 
-  read -p "Do you want to add a WHERE clause? (y/n): " ans
+	display "Do you want to add a WHERE clause? (y/n):"
+  read ans
+   
   if [[ "$ans" == "y" ]]; then
-    read -p "Enter condition (e.g., age=20 AND name=Ali): " condition
+    display "Enter condition (e.g., age=20 AND name=Ali): "
+    read condition
 
     # read columns from schema 
     # IFS=',' read -r -a columns < "schema" 
