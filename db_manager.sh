@@ -246,7 +246,7 @@ check_columns() {
 read_constraints() {
 
   read -p "Do you want to add a WHERE clause? (y/n): " ans
-  if [ "$ans" = "y" ]; then
+  if [[ "$ans" == "y" ]]; then
     read -p "Enter condition (e.g., age=20 AND name=Ali): " condition
 
     # read columns from schema 
@@ -435,9 +435,11 @@ delete_from_table () {
   schema_file="${table_name}/${table_name}_schema"
   data_file="${table_name}/${table_name}_data"
 
+  echo "call read constrains"
   # delete records with conditions
   read_constraints
 
+  echo "preform delete "
   # use awk to delete rows based on the condition
   awk -F',' "!($awk_expr)" "${data_file}" > "${data_file}.tmp" && mv "${data_file}.tmp" "${data_file}"
 
