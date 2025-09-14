@@ -256,7 +256,7 @@ read_constraints() {
     types=() # column types
     keys=()  # column keys (constraints)
     
-    schema_file="${table_name}/schema"
+    schema_file="${table_name}/${table_name}_schema"
     # Read schema line by line
     while IFS=',' read -r cname ctype cconstraint; do
       columns+=("$cname")
@@ -311,14 +311,14 @@ read_constraints() {
 
 
     # TODO: Print schema
-    head -n1 "${table_name}/schema" | column -t -s','
+    head -n1 "${table_name}/${table_name}_schema" | column -t -s','
 
     # use awk to filter rows based on the condition
-    awk -F',' "($awk_expr)" "${table_name}/data" | column -t -s','
+    awk -F',' "($awk_expr)" "${table_name}/${table_name}_data" | column -t -s','
 
   else
     # Show all
-    column -t -s',' "${table_name}/data" | less
+    column -t -s',' "${table_name}/${table_name}_data" | less
   fi
 }
 
@@ -426,12 +426,12 @@ delete_from_table () {
     display "Table '$table_name' does not exist." "r"
     display "Enter a valid table name or -1 to exit:"
     read 
-    if [ $table_name -eq -1 ]; then
+    if [[ "$table_name" == "-1" ]]; then
       return
     fi
   done
 
-  table_name="$table_name"
+  echo $table_name ;
   schema_file="${table_name}/${table_name}_schema"
   data_file="${table_name}/${table_name}_data"
 
