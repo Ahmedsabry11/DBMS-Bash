@@ -165,7 +165,7 @@ while true; do
       ;;
 
     5)
-      display "Thank you for using our app :)" "g"
+      display "Thank you for using our DBMS :)" "g"
       exit
       ;;
 

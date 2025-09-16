@@ -6,7 +6,7 @@ display "Hi! (DB manager)" "g"
 validate_table_name() {
   while [ -e $table_name ]; do
     display "Can't have more than 1 table with the same name!" "r"
-    display "Enter a valid DB name. or -1 to exit" "g"
+    display "Enter a valid table name. or -1 to exit" "g"
     read table_name
 
     # i don't want to create the table
@@ -99,7 +99,7 @@ get_col_constraints() {
     done
   else
     for con in "${basic_con[@]}"; do
-      display "Enter lowercase (y or n) to apply make the column $con" "g"
+      display "Enter lowercase (y or n) to apply ($con) constraint on the column" "g"
       read user_choice
       if [ $user_choice = "y" ]; then
         cur_col_con+="$con,"
@@ -134,6 +134,7 @@ create_table () {
   fi
 
   # 2. create a dir for the table with 2 files (schema, data)
+  # after this call, we have access to 2 variable that represnet the path to table files ('$schema_path', '$data_path')
   create_table_files
   
   # 3. get columns and conditions (table structure)
@@ -145,7 +146,7 @@ create_table () {
     # TODO: make sure name is not repeated
     # if -1 returned stop reading more columns
     if ! set_col_name; then
-      return
+      break
     fi
     
 
@@ -172,13 +173,32 @@ create_table () {
     fi
 
     # remove trailing ',' from cur_col_con
-    cur_col_con=${cur_col_con::-1}
+    # if cur_col_con is empty, the slicing will cause an error (script crash and return)
+    # so, we must check the len > 0
+    if [ -n "$cur_col_con" ]; then    # also works ==> if [ ${#cur_col_con} -gt 0 ]
+      cur_col_con=${cur_col_con::-1}
+    fi
+
     record="$cur_col_name,$cur_col_dt,$cur_col_con"
     display "$record" "r"
 
-    # TODO: append to schema file "col_name,col_dt,col_con"
+    # try to append the table meta-date in the file
+    if echo  "$record" >> "$schema_path"; then
+      display "Column data saved successfully" "g"
+    else
+      display "Failed to column meta-data" "r"
+    fi
 
   done
+
+  display "Table created successfull" "g"
+  display "Data stored: "
+
+  if [ -f "$schema_path" ]; then
+    cat "$schema_path" 2>/dev/null
+  else
+    echo "File not found: $schema_path"
+  fi
 }
 
 list_tables () {
