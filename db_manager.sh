@@ -47,6 +47,26 @@ set_col_name() {
   display "Characters and underscores only allowed" "g"
   read cur_col_name
 
+  while true; do
+    # flag to check if column name is repeated
+    found=false
+
+    for prev_name in "${prev_cols[@]}"; do
+      if [ "$prev_name" = "$cur_col_name" ]; then
+        found=true
+        break
+      fi
+    done
+
+    if [ "$found" = true ]; then
+      display "This column name is used before. Enter another valid column name" "r"
+      read cur_col_name
+    else
+      prev_cols+=("${cur_col_name}")
+      break
+    fi
+  done
+
   # while it doesn't match the regex
   while [[ ! $cur_col_name =~ $col_name_regex ]]; do
     # i don't want to create the table
@@ -89,7 +109,7 @@ get_col_constraints() {
   done
 
   # fill column
-  numbers_con=("gt" "ls" "eq")
+  numbers_con=("gt" "ls")
   basic_con=("unique" "not null")
 
   # apply basic constraints (if not pk => already unique + not null)
@@ -111,7 +131,7 @@ get_col_constraints() {
   if [ $cur_col_dt = "number" ]; then
     for con in "${numbers_con[@]}"; do
       display "Enter lowercase (y or n) to apply '$con' constraint on the column" "g"
-      read user_choice    # gt, le, eq => must specify a value
+      read user_choice    # gt, le => must specify a value
       if [ $user_choice = "y" ]; then
         display "Enter the value (integer)" "g"
         read con_value
@@ -140,10 +160,14 @@ create_table () {
   # 3. get columns and conditions (table structure)
   pk_flag=0   # false, not read yet
   display "Enter the columns and their conditions. one by one" "g"
+
+  # store previous column names to make sure coming ones don't have the same name
+  prev_cols=()
+    
   while true; do
     cur_col_name=""
-    
-    # TODO: make sure name is not repeated
+
+
     # if -1 returned stop reading more columns
     if ! set_col_name; then
       break
@@ -180,7 +204,6 @@ create_table () {
     fi
 
     record="$cur_col_name,$cur_col_dt,$cur_col_con"
-    display "$record" "r"
 
     # try to append the table meta-date in the file
     if echo  "$record" >> "$schema_path"; then
@@ -192,13 +215,6 @@ create_table () {
   done
 
   display "Table created successfull" "g"
-  display "Data stored: "
-
-  if [ -f "$schema_path" ]; then
-    cat "$schema_path" 2>/dev/null
-  else
-    echo "File not found: $schema_path"
-  fi
 }
 
 list_tables () {
