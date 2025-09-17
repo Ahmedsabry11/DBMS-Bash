@@ -316,8 +316,6 @@ insert_data() {
     display "Row inserted: $row_data" "g"
 }
 
-
-
 check_columns() {
     local -n cols="$1"
   
@@ -338,7 +336,6 @@ check_columns() {
     # case 2: multiple selections
     seen=()
     for col in "${cols[@]}"; do
-       
         if [[ "$col" == "*" ]]; then
             return 1   # '*' is only valid when it's the only input
         fi
@@ -365,7 +362,6 @@ read_constraints() {
 
 	display "Do you want to add a WHERE clause? (y/n):"
   read ans
-   
   if [[ "$ans" == "y" ]]; then
     display "Enter condition (e.g., age=20 AND name=Ali): "
     read condition
