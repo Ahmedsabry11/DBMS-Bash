@@ -333,15 +333,19 @@ read_constraints() {
     done
 
 
-    # TODO: Print schema
-    head -n1 "${table_name}/${table_name}_schema" | column -t -s','
+    # return awk_expr to caller to use it in filtering
+    echo "AWK expression: $awk_expr"
+    export awk_expr
 
-    # use awk to filter rows based on the condition
-    awk -F',' "($awk_expr)" "${table_name}/${table_name}_data" | column -t -s','
+    # # TODO: Print schema
+    # head -n1 "${table_name}/${table_name}_schema" | column -t -s','
+
+    # # use awk to filter rows based on the condition
+    # awk -F',' "($awk_expr)" "${table_name}/${table_name}_data" | column -t -s','
 
   else
-    # Show all
-    column -t -s',' "${table_name}/${table_name}_data" | less
+    awk_expr="1"  # no filtering, select all rows
+    export awk_expr
   fi
 }
 
@@ -460,12 +464,17 @@ delete_from_table () {
 
   echo "call read constrains"
   # delete records with conditions
+  # read_constraints will fill awk_expr variable
+  export awk_expr=""
   read_constraints
+  echo "AWK expression received: $awk_expr"
 
   echo "preform delete "
   # use awk to delete rows based on the condition
   awk -F',' "!($awk_expr)" "${data_file}" > "${data_file}.tmp" && mv "${data_file}.tmp" "${data_file}"
 
+  # delete the temp file if it exists
+  [ -f "${data_file}.tmp" ] && rm "${data_file}.tmp"
   display "Records deleted successfully." "g"
 }
 
