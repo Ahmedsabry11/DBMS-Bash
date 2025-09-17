@@ -390,7 +390,7 @@ read_constraints() {
         # Append condition to awk expression
         awk_expr="$awk_expr \$${col_index}<$val"
       elif [[ "$token" == *">="* ]]; then
-        col=$(echo "$token" | cut -d'=' -f1 | cut -d'>' -f1) # column name
+        col=$(echo "$token" | cut -d'>' -f1 ) # column name
         val=$(echo "$token" | cut -d'=' -f2) # value
 
         # Find column index
@@ -411,7 +411,7 @@ read_constraints() {
         # Append condition to awk expression
         awk_expr="$awk_expr \$${col_index}>=$val"
       elif [[ "$token" == *"<="* ]]; then
-        col=$(echo "$token" | cut -d'=' -f1 | cut -d'<' -f1) # column name
+        col=$(echo "$token" | cut -d'<' -f1) # column name
         val=$(echo "$token" | cut -d'=' -f2) # value
 
         # Find column index
