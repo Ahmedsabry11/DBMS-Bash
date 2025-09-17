@@ -237,10 +237,12 @@ insert_into_table () {
 	display "insert_into_table"
 }
 
+
 check_columns() {
-    array_name="$1"   # name of the array (e.g. "selected_cols")
+    local -n cols="$1"
+  
     total=$2          # total number of schema columns
-    eval "cols=( \"\${${array_name}[@]}\" )"
+    
 
     # case 1: single selection
     if [[ ${#cols[@]} -eq 1 ]]; then
@@ -256,7 +258,7 @@ check_columns() {
     # case 2: multiple selections
     seen=()
     for col in "${cols[@]}"; do
-        # 🔹 fix: allow '*' if user mistakenly typed it with others
+       
         if [[ "$col" == "*" ]]; then
             return 1   # '*' is only valid when it's the only input
         fi
@@ -452,98 +454,103 @@ read_constraints() {
   fi
 }
 
-select_from_table () {
-	display "select_from_table"
-	display "Enter the table name:" "g"
-	read table_name
-	
-	while [[ ! -d $table_name ]]; do
-		display "Table '$table_name' does not exist." "r"
-		display "Enter a valid table name:"
-		read table_name
-	done
-	
-	schema_file="${table_name}/${table_name}_schema"
-    data_file="${table_name}/${table_name}_data"
-    	
-	columns=($(cut -d, -f1 "$schema_file"))
-	
-	display "Columns:" "g"
-    	for i in "${!columns[@]}"; do
-        	echo "$((i+1)) : ${columns[i]}"
-    	done
-    	
-    	echo "Enter columns to select:"
-    	echo "Use '*' for all columns, or comma-separated numbers"
-    	read selected
-	#selected_cols=($(echo "$selected" | tr -d ' ' | tr ',' ' '))
-	# normalize input: remove CR (Windows) and spaces
-	selected="${selected//$'\r'/}"
-	selected="${selected// /}"
+select_from_table() {
+    display "select_from_table"
+    display "Enter the table name:" "g"
+    read table_name
 
-	# split into array on commas (safe)
-	IFS=',' read -r -a selected_cols <<< "$selected"
-	
-	while ! check_columns selected_cols "${#columns[@]}"; do
-		display "Wrong Selection" "r"
-		echo "Enter columns to select:"
-        	echo "Use '*' for all columns, or comma-separated numbers"
-        	read selected
-		selected_cols=($(echo "$selected" | tr -d ' ' | tr ',' ' '))
-	done
-	
-	display "How many rows do you want to display? Enter a number or 'all'." "g"
-	read rows
-	
-	total_rows=$(wc -l < "$data_file")
-	
-	display "============================================"
-	printf "%-5s" "Row"
-	for col in ${columns[@]}; do
-		printf "%-10s" "$col"
-	done
-	echo
-	display "============================================"
-	row_num=1
-	if [[ "$rows" == 'all' ]]; then
-		
-		while read -r line; do
-			printf "%-5s" "$row_num"
-		
-			vals=($(echo "$line" | tr ',' ' '))
-            		if [[ "${selected_cols[0]}" == "*" ]]; then
-                		for val in "${vals[@]}"; do
-                    			printf "%-10s" "$val"
-                		done
-            		else
-                		for idx in "${selected_cols[@]}"; do
-                    			printf "%-10s" "${vals[$((idx-1))]}"
-                		done
-            		fi
+    while [[ ! -d $table_name ]]; do
+        display "Table '$table_name' does not exist." "r"
+        display "Enter a valid table name:" "g"
+        read table_name
+    done
 
-            		echo
-            		((row_num++))
-        	done < "$data_file"
-	
-	elif [[ "$rows" =~ ^[0-9]+$ ]]; then
-        	while read -r line && (( row_num <= rows )); do
-            		printf "%-5s" "$row_num"
+    local schema_file="${table_name}/${table_name}_schema"
+    local data_file="${table_name}/${table_name}_data"
 
-            		vals=($(echo "$line" | tr ',' ' '))
-            		if [[ "${selected_cols[0]}" == "*" ]]; then
-                		for val in "${vals[@]}"; do
-                    			printf "%-10s" "$val"
-                		done
-            		else
-                		for idx in "${selected_cols[@]}"; do
-                    			printf "%-10s" "${vals[$((idx-1))]}"
-                		done
-            		fi
+    # Read column names from schema
+    columns=($(cut -d',' -f1 "$schema_file"))
+    
 
-            		echo
-            		((row_num++))
-        	done < "$data_file"
-    	fi
+    display "Columns:" "g"
+    for i in "${!columns[@]}"; do
+        echo "$((i+1)) : ${columns[i]}"
+    done
+
+    display "Enter columns to select:"
+    display "Use '*' for all columns, or comma-separated numbers"
+    read selected
+    
+    selected="${selected// /}"
+
+    IFS=',' read -a selected_cols <<< "$selected" 
+
+    while ! check_columns selected_cols "${#columns[@]}"; do
+        display "Wrong Selection" "r"
+        display "Enter columns to select:" "g"
+        read selected
+        selected="${selected// /}"
+        IFS=',' read -a selected_cols <<< "$selected"
+    done
+
+    # Use a unique temporary file
+    tmp_file="/tmp/filtered_rows.txt"
+    read_constraints
+    awk -F',' "($awk_expr)" "$data_file" > "$tmp_file"
+    display "How many rows do you want to display? Enter a number or 'all'." "g"
+    read rows
+
+    display "============================================"
+    printf "%-5s" "Row"
+    if [[ "${selected_cols[0]}" == "*" ]]; then
+        for col in "${columns[@]}"; do
+            printf "%-10s" "$col"
+        done
+    else
+        for idx in "${selected_cols[@]}"; do
+            printf "%-10s" "${columns[idx-1]}"
+        done
+    fi
+    echo
+    display "============================================"
+
+    # Print rows
+    row_num=1
+    if [[ "$rows" == "all" ]]; then
+        while read -r line; do
+            printf "%-5s" "$row_num"
+            vals=($(echo "$line" | tr ',' ' '))
+            if [[ "${selected_cols[0]}" == "*" ]]; then
+                for val in "${vals[@]}"; do
+                    printf "%-10s" "$val"
+                done
+            else
+                for idx in "${selected_cols[@]}"; do
+                    printf "%-10s" "${vals[$((idx-1))]}"
+                done
+            fi
+            echo
+            ((row_num++))
+        done < "$tmp_file"
+    elif [[ "$rows" =~ ^[0-9]+$ ]]; then
+        while read -r line && (( row_num <= rows )); do
+            printf "%-5s" "$row_num"
+            vals=($(echo "$line" | tr ',' ' '))
+            if [[ "${selected_cols[0]}" == "*" ]]; then
+                for val in "${vals[@]}"; do
+                    printf "%-10s" "$val"
+                done
+            else
+                for idx in "${selected_cols[@]}"; do
+                    printf "%-10s" "${vals[$((idx-1))]}"
+                done
+            fi
+            echo
+            ((row_num++))
+        done < "$tmp_file"
+    fi
+
+    rm -f "$tmp_file"
 }
 
 
