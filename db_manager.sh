@@ -304,9 +304,9 @@ read_constraints() {
     tokens=($condition)   
 
     for token in "${tokens[@]}"; do
-      if [ "$token" = "AND" ]; then
+      if [[ "$token" =~ ^(AND|and)$ ]]; then
         awk_expr="$awk_expr &&"
-      elif [ "$token" = "OR" ]; then
+      elif [[ "$token" =~ ^(OR|or)$ ]]; then
         awk_expr="$awk_expr ||"
       elif [[ "$token" == *=* ]]; then
         col=$(echo "$token" | cut -d'=' -f1) # column name
