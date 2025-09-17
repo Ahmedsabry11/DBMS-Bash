@@ -233,9 +233,46 @@ drop_table () {
   fi
 }
 
-insert_into_table () {
-	display "insert_into_table"
+insert_data() {
+    display "Enter the table name" "g"
+    read table_name
+    if [ ! -d "$table_name" ]; then
+        display "Table not found!" "r"
+        return
+    fi
+    if ! read_schema "$table_name"; then
+        return
+    fi
+    values=()
+    for i in "${!DB_COLUMNS[@]}"; do
+        col_name="${DB_COLUMNS[$i]}"
+        col_type="${DB_TYPES[$i]}"
+        constraints="${DB_CONSTRAINTS[$i]}"
+        while true; do
+            display "Enter value for '$col_name' ($col_type):" "g"
+            read value
+            valid=true
+            if [ -n "$constraints" ]; then
+                IFS=',' read -ra constraint_list <<< "$constraints"
+                for constraint in "${constraint_list[@]}"; do
+                    case "$constraint" in
+                        "not null") [ -z "$value" ] && valid=false && break ;;
+                        "unique") if ! check_unique_value "$table_name" "$col_name" "$value"; then valid=false && break; fi ;;
+                        gt-*) min_val="${constraint#gt-}"; [ "$value" -le "$min_val" ] && valid=false && break ;;
+                        ls-*) max_val="${constraint#ls-}"; [ "$value" -ge "$max_val" ] && valid=false && break ;;
+                    esac
+                done
+            fi
+            if $valid; then break; else display "Invalid value" "r"; fi
+        done
+        values+=("$value")
+    done
+    data_path="${table_name}/${table_name}_data"
+    row_data=$(IFS=','; echo "${values[*]}")
+    echo "$row_data" >> "$data_path"
+    display "Row inserted: $row_data" "g"
 }
+
 
 
 check_columns() {
@@ -589,8 +626,39 @@ delete_from_table () {
   display "Records deleted successfully." "g"
 }
 
-update_table () {
-	display "update_table"
+update_data() {
+    display "Enter the table name" "g"
+    read table_name
+    if [ ! -d "$table_name" ]; then
+        display "Table not found!" "r"
+        return
+    fi
+    if ! read_schema "$table_name"; then
+        return
+    fi
+    data_path="${table_name}/${table_name}_data"
+    if [ ! -s "$data_path" ]; then
+        display "Table is empty!" "g"
+        return
+    fi
+    read_constraints
+    display "Enter column to update:" "g"
+    read update_col
+    update_pos=-1
+    for i in "${!DB_COLUMNS[@]}"; do
+        if [ "${DB_COLUMNS[$i]}" = "$update_col" ]; then
+            update_pos=$((i+1))
+            break
+        fi
+    done
+    [ "$update_pos" -eq -1 ] && display "Column not found!" "r" && return
+    display "Enter new value:" "g"
+    read new_value
+    tmp="${data_path}.tmp"
+    awk -F',' -v OFS=',' -v upos="$update_pos" -v nval="$new_value" \
+        "($awk_expr){\$upos=nval} {print}" "$data_path" > "$tmp" && mv "$tmp" "$data_path"
+    display "Update complete" "g"
+    cat "$data_path"
 }
 
 
@@ -615,7 +683,7 @@ while true; do
       ;;
 
     4)
-      insert_into_table
+      insert_data
       ;;
 
     5)
@@ -627,7 +695,7 @@ while true; do
 			;;
 
 		7)
-			update_table
+			update_data
 			;;
 
 		8)
