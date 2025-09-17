@@ -329,6 +329,93 @@ read_constraints() {
 
         # Append condition to awk expression
         awk_expr="$awk_expr \$${col_index}==\"$val\""
+      elif [[ "$token" == *">"* ]]; then
+        col=$(echo "$token" | cut -d'>' -f1) # column name
+        val=$(echo "$token" | cut -d'>' -f2) # value
+
+        # Find column index
+        col_index=-1
+        for i in "${!columns[@]}"; do
+          cname=${columns[$i]}
+          if [ "$cname" = "$col" ]; then
+            col_index=$((i+1))
+            break
+          fi
+        done
+
+        if [ $col_index -eq -1 ]; then
+          echo "Column '$col' not found!"
+          return
+        fi
+
+        # Append condition to awk expression
+        awk_expr="$awk_expr \$${col_index}>$val"
+      elif [[ "$token" == *"<"* ]]; then
+        col=$(echo "$token" | cut -d'<' -f1) # column name
+        val=$(echo "$token" | cut -d'<' -f2) # value
+
+        # Find column index
+        col_index=-1
+        for i in "${!columns[@]}"; do
+          cname=${columns[$i]}
+          if [ "$cname" = "$col" ]; then
+            col_index=$((i+1))
+            break
+          fi
+        done
+
+        if [ $col_index -eq -1 ]; then
+          echo "Column '$col' not found!"
+          return
+        fi
+
+        # Append condition to awk expression
+        awk_expr="$awk_expr \$${col_index}<$val"
+      elif [[ "$token" == *">="* ]]; then
+        col=$(echo "$token" | cut -d'=' -f1 | cut -d'>' -f1) # column name
+        val=$(echo "$token" | cut -d'=' -f2) # value
+
+        # Find column index
+        col_index=-1
+        for i in "${!columns[@]}"; do
+          cname=${columns[$i]}
+          if [ "$cname" = "$col" ]; then
+            col_index=$((i+1))
+            break
+          fi
+        done
+
+        if [ $col_index -eq -1 ]; then
+          echo "Column '$col' not found!"
+          return
+        fi
+
+        # Append condition to awk expression
+        awk_expr="$awk_expr \$${col_index}>=$val"
+      elif [[ "$token" == *"<="* ]]; then
+        col=$(echo "$token" | cut -d'=' -f1 | cut -d'<' -f1) # column name
+        val=$(echo "$token" | cut -d'=' -f2) # value
+
+        # Find column index
+        col_index=-1
+        for i in "${!columns[@]}"; do
+          cname=${columns[$i]}
+          if [ "$cname" = "$col" ]; then
+            col_index=$((i+1))
+            break
+          fi
+        done
+
+        if [ $col_index -eq -1 ]; then
+          echo "Column '$col' not found!"
+          return
+        fi
+
+        # Append condition to awk expression
+        awk_expr="$awk_expr \$${col_index}<=$val"
+      else
+        echo "Invalid token: $token"
+        return
       fi
     done
 
