@@ -233,6 +233,49 @@ drop_table () {
   fi
 }
 
+read_schema() {
+    table_name="$1"
+    schema_path="${table_name}/${table_name}_schema"
+    if [ ! -f "$schema_path" ]; then
+        display "Schema file not found!" "r"
+        return 1
+    fi
+    DB_COLUMNS=()
+    DB_TYPES=()
+    DB_CONSTRAINTS=()
+    while IFS=',' read -r col_name col_type rest; do
+        [ -z "$col_name" ] && continue
+        DB_COLUMNS+=("$col_name")
+        DB_TYPES+=("$col_type")
+        constraints="$(echo "$rest" | sed 's/^,//')"
+        DB_CONSTRAINTS+=("$constraints")
+    done < "$schema_path"
+    return 0
+}
+
+check_unique_value() {
+    table_name="$1"
+    column_name="$2"
+    value="$3"
+    data_path="${table_name}/${table_name}_data"
+    col_pos=1
+    for i in "${!DB_COLUMNS[@]}"; do
+        if [ "${DB_COLUMNS[$i]}" = "$column_name" ]; then
+            col_pos=$((i + 1))
+            break
+        fi
+    done
+    if [ ! -f "$data_path" ] || [ ! -s "$data_path" ]; then
+        return 0
+    fi
+    if cut -d',' -f"$col_pos" "$data_path" | grep -Fxq "$value"; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+
 insert_data() {
     display "Enter the table name" "g"
     read table_name
