@@ -18,7 +18,7 @@ This is a simple file-based Database Management System implemented in Bash.
    chmod +x dbms.sh db_manager.sh
 
 ## Architecture Design
-
+   ```
           +--------------------+
           |      dbms.sh       |
           |  (Main Script)     |
@@ -49,4 +49,4 @@ This is a simple file-based Database Management System implemented in Bash.
 |Delete | |Update | |Exit   |
 |Rows   | |Rows   | |Return |
 +-------+ +-------+ +-------+
-
+   ```
