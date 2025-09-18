@@ -19,29 +19,34 @@ This is a simple file-based Database Management System implemented in Bash.
 
 ## Architecture Design
 
-+--------------------+
-|      dbms.sh       |
-|  (Main Script)     |
-+--------------------+
-          |
-          |  User selects "Connect to DB"
-          v
-+--------------------+
-|  Connect to DB     |
-|  (change directory)|
-+--------------------+
-          |
-          v
-+--------------------+
-|  db_manager.sh     |
-|  (Table Manager)   |
-+--------------------+
-          |
-  +-------+-------+--------+--------+--------+--------+--------+
-  |       |       |        |        |        |        |        |
-  v       v       v        v        v        v        v        v
-Create  List    Drop    Insert   Select   Delete   Update    Exit
-Table   Tables  Table   Rows     Rows     Rows     Rows     Return
+          +--------------------+
+          |      dbms.sh       |
+          |  (Main Script)     |
+          +--------------------+
+                    |
+                    v
+          +--------------------+
+          |   Select DB        |
+          |  (change directory)|
+          +--------------------+
+                    |
+                    v
+          +--------------------+
+          |  db_manager.sh     |
+          |  (Table Manager)   |
+          +--------------------+
+                    |
+    +---------------+---------------+
+    |       |       |       |       |
+    v       v       v       v       v
++-------+ +-------+ +-------+ +-------+ +-------+
+|Create | |List   | |Drop   | |Insert | |Select |
+|Table  | |Tables | |Table  | |Rows   | |Rows   |
++-------+ +-------+ +-------+ +-------+ +-------+
+    |       |       |       |       |
+    v       v       v       v       v
++-------+ +-------+ +-------+
+|Delete | |Update | |Exit   |
+|Rows   | |Rows   | |Return |
++-------+ +-------+ +-------+
 
-
-   
