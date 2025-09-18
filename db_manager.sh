@@ -340,9 +340,9 @@ insert_data() {
 
 
 check_columns() {
-    local -n cols="$1"
+    local -n cols=$1
   
-    total=$2          # total number of schema columns
+    total=$2          
     
 
     # case 1: single selection
@@ -359,10 +359,6 @@ check_columns() {
     # case 2: multiple selections
     seen=()
     for col in "${cols[@]}"; do
-        if [[ "$col" == "*" ]]; then
-            return 1   # '*' is only valid when it's the only input
-        fi
-
         if [[ ! "$col" =~ ^[0-9]+$ ]]; then
             return 1
         fi
@@ -389,20 +385,19 @@ read_constraints() {
     display "Enter condition (e.g., age=20 AND name=Ali): "
     read condition
 
-    # read columns from schema 
-    # IFS=',' read -r -a columns < "schema" 
-    OLDIFS=$IFS   # Save current value
-    columns=()   # column names
-    types=() # column types
-    keys=()  # column keys (constraints)
+    
+    OLDIFS=$IFS   
+    columns=() 
+    types=() 
+    keys=() 
     
     schema_file="${table_name}/${table_name}_schema"
-    # Read schema line by line
+
     while IFS=',' read -r cname ctype cconstraint; do
       columns+=("$cname")
       types+=("$ctype")
 
-      # If no constraint → store empty string
+   
       if [[ -z "$cconstraint" ]]; then
         keys+=("NONE")
       else
@@ -410,11 +405,9 @@ read_constraints() {
       fi
     done < "$schema_file"
 
-    # print columns for debugging
-    for col in "${columns[@]}"; do
-      echo "Column: $col"
-    done
-    IFS=$OLDIFS   # Restore original value
+   
+   
+    IFS=$OLDIFS  
 
 
     awk_expr=""
@@ -426,10 +419,10 @@ read_constraints() {
       elif [[ "$token" =~ ^(OR|or)$ ]]; then
         awk_expr="$awk_expr ||"
       elif [[ "$token" == *">="* ]]; then
-        col=$(echo "$token" | cut -d'>' -f1 ) # column name
-        val=$(echo "$token" | cut -d'=' -f2) # value
+        col=$(echo "$token" | cut -d'>' -f1 ) 
+        val=$(echo "$token" | cut -d'=' -f2)
 	
-        # Find column index
+       
         col_index=-1
         for i in "${!columns[@]}"; do
           cname=${columns[$i]}
@@ -444,13 +437,12 @@ read_constraints() {
           return
         fi
 
-        # Append condition to awk expression
+       
         awk_expr="$awk_expr \$${col_index}>=$val"
       elif [[ "$token" == *"<="* ]]; then
-        col=$(echo "$token" | cut -d'<' -f1) # column name
-        val=$(echo "$token" | cut -d'=' -f2) # value
+        col=$(echo "$token" | cut -d'<' -f1) 
+        val=$(echo "$token" | cut -d'=' -f2) 
 
-        # Find column index
         col_index=-1
         for i in "${!columns[@]}"; do
           cname=${columns[$i]}
@@ -465,13 +457,11 @@ read_constraints() {
           return
         fi
 
-        # Append condition to awk expression
         awk_expr="$awk_expr \$${col_index}<=$val"
       elif [[ "$token" == *=* ]]; then
-        col=$(echo "$token" | cut -d'=' -f1) # column name
-        val=$(echo "$token" | cut -d'=' -f2) # value
+        col=$(echo "$token" | cut -d'=' -f1) 
+        val=$(echo "$token" | cut -d'=' -f2) 
 
-        # Find column index
         col_index=-1
         for i in "${!columns[@]}"; do
           cname=${columns[$i]}
@@ -486,13 +476,12 @@ read_constraints() {
           return
         fi
 
-        # Append condition to awk expression
         awk_expr="$awk_expr \$${col_index}==\"$val\""
       elif [[ "$token" == *">"* ]]; then
-        col=$(echo "$token" | cut -d'>' -f1) # column name
-        val=$(echo "$token" | cut -d'>' -f2) # value
+        col=$(echo "$token" | cut -d'>' -f1)
+        val=$(echo "$token" | cut -d'>' -f2) 
 
-        # Find column index
+      
         col_index=-1
         for i in "${!columns[@]}"; do
           cname=${columns[$i]}
@@ -507,13 +496,12 @@ read_constraints() {
           return
         fi
 
-        # Append condition to awk expression
         awk_expr="$awk_expr \$${col_index}>$val"
       elif [[ "$token" == *"<"* ]]; then
-        col=$(echo "$token" | cut -d'<' -f1) # column name
-        val=$(echo "$token" | cut -d'<' -f2) # value
+        col=$(echo "$token" | cut -d'<' -f1) 
+        val=$(echo "$token" | cut -d'<' -f2)
 
-        # Find column index
+    
         col_index=-1
         for i in "${!columns[@]}"; do
           cname=${columns[$i]}
@@ -528,7 +516,7 @@ read_constraints() {
           return
         fi
 
-        # Append condition to awk expression
+       
         awk_expr="$awk_expr \$${col_index}<$val"
       
       else
@@ -537,19 +525,10 @@ read_constraints() {
       fi
     done
 
-
-    # return awk_expr to caller to use it in filtering
-    echo "AWK expression: $awk_expr"
     export awk_expr
 
-    # # TODO: Print schema
-    # head -n1 "${table_name}/${table_name}_schema" | column -t -s','
-
-    # # use awk to filter rows based on the condition
-    # awk -F',' "($awk_expr)" "${table_name}/${table_name}_data" | column -t -s','
-
   else
-    awk_expr="1"  # no filtering, select all rows
+    awk_expr="1" 
     export awk_expr
   fi
 }
@@ -568,7 +547,7 @@ select_from_table() {
     local schema_file="${table_name}/${table_name}_schema"
     local data_file="${table_name}/${table_name}_data"
 
-    # Read column names from schema
+  
     columns=($(cut -d',' -f1 "$schema_file"))
     
 
@@ -581,7 +560,7 @@ select_from_table() {
     display "Use '*' for all columns, or comma-separated numbers"
     read selected
     
-    selected="${selected// /}"
+    selected=$(echo "$selected" | tr -d ' ')
 
     IFS=',' read -a selected_cols <<< "$selected" 
 
@@ -589,11 +568,11 @@ select_from_table() {
         display "Wrong Selection" "r"
         display "Enter columns to select:" "g"
         read selected
-        selected="${selected// /}"
+        selected=$(echo "$selected" | tr -d ' ')
         IFS=',' read -a selected_cols <<< "$selected"
     done
 
-    # Use a unique temporary file
+   
     tmp_file="/tmp/filtered_rows.txt"
     read_constraints
     awk -F',' "($awk_expr)" "$data_file" > "$tmp_file"
@@ -617,7 +596,7 @@ select_from_table() {
     # Print rows
     row_num=1
     if [[ "$rows" == "all" ]]; then
-        while read -r line; do
+        while read line; do
             printf "%-5s" "$row_num"
             vals=($(echo "$line" | tr ',' ' '))
             if [[ "${selected_cols[0]}" == "*" ]]; then
@@ -633,7 +612,7 @@ select_from_table() {
             ((row_num++))
         done < "$tmp_file"
     elif [[ "$rows" =~ ^[0-9]+$ ]]; then
-        while read -r line && (( row_num <= rows )); do
+        while read line && (( row_num <= rows )); do
             printf "%-5s" "$row_num"
             vals=($(echo "$line" | tr ',' ' '))
             if [[ "${selected_cols[0]}" == "*" ]]; then
@@ -673,17 +652,13 @@ delete_from_table () {
   data_file="${table_name}/${table_name}_data"
 
   echo "call read constrains"
-  # delete records with conditions
-  # read_constraints will fill awk_expr variable
+
   export awk_expr=""
   read_constraints
-  echo "AWK expression received: $awk_expr"
+ 
 
-  echo "preform delete "
-  # use awk to delete rows based on the condition
   awk -F',' "!($awk_expr)" "${data_file}" > "${data_file}.tmp" && mv "${data_file}.tmp" "${data_file}"
 
-  # delete the temp file if it exists
   [ -f "${data_file}.tmp" ] && rm "${data_file}.tmp"
   display "Records deleted successfully." "g"
 }
