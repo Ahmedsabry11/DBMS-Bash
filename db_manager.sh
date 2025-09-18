@@ -286,15 +286,30 @@ insert_data() {
     if ! read_schema "$table_name"; then
         return
     fi
+
     values=()
     for i in "${!DB_COLUMNS[@]}"; do
         col_name="${DB_COLUMNS[$i]}"
         col_type="${DB_TYPES[$i]}"
         constraints="${DB_CONSTRAINTS[$i]}"
+
         while true; do
             display "Enter value for '$col_name' ($col_type):" "g"
             read value
             valid=true
+
+            # Type validation
+            case "$col_type" in
+                int|number)
+                    if ! [[ "$value" =~ ^-?[0-9]+$ ]]; then
+                        valid=false
+                        display "Invalid input: expected an integer" "r"
+                        continue
+                    fi
+                    ;;
+            esac
+
+            # Constraints validation
             if [ -n "$constraints" ]; then
                 IFS=',' read -ra constraint_list <<< "$constraints"
                 for constraint in "${constraint_list[@]}"; do
@@ -306,15 +321,23 @@ insert_data() {
                     esac
                 done
             fi
-            if $valid; then break; else display "Invalid value" "r"; fi
+
+            if $valid; then
+                break
+            else
+                display "Invalid value" "r"
+            fi
         done
+
         values+=("$value")
     done
+
     data_path="${table_name}/${table_name}_data"
     row_data=$(IFS=','; echo "${values[*]}")
     echo "$row_data" >> "$data_path"
     display "Row inserted: $row_data" "g"
 }
+
 
 check_columns() {
     local -n cols="$1"
@@ -675,27 +698,97 @@ update_data() {
     if ! read_schema "$table_name"; then
         return
     fi
+
     data_path="${table_name}/${table_name}_data"
     if [ ! -s "$data_path" ]; then
         display "Table is empty!" "g"
         return
     fi
+
     read_constraints
+
     display "Enter column to update:" "g"
     read update_col
     update_pos=-1
     for i in "${!DB_COLUMNS[@]}"; do
         if [ "${DB_COLUMNS[$i]}" = "$update_col" ]; then
             update_pos=$((i+1))
+            # Block update if it's the first column (primary key)
+            if [ "$i" -eq 0 ]; then
+                display "Error: Cannot update the primary key column!" "r"
+                return
+            fi
             break
         fi
     done
     [ "$update_pos" -eq -1 ] && display "Column not found!" "r" && return
-    display "Enter new value:" "g"
-    read new_value
+
+    # Ask for new value with validation
+    valid=false
+    while [ "$valid" = false ]; do
+        display "Enter new value for '$update_col':" "g"
+        read new_value
+        valid=true
+
+        # --- Type check ---
+        if [ "${DB_TYPES[$((update_pos-1))]}" = "number" ]; then
+            if ! [[ "$new_value" =~ ^-?[0-9]+$ ]]; then
+                display "Invalid input: expected a number" "r"
+                valid=false
+                continue
+            fi
+        fi
+
+        # --- Constraint checks ---
+        constraints="${DB_CONSTRAINTS[$((update_pos-1))]}"
+        IFS=',' read -ra constraint_list <<< "$constraints"
+        for constraint in "${constraint_list[@]}"; do
+            case "$constraint" in
+                "not null")
+                    if [ -z "$new_value" ]; then
+                        display "Constraint failed: value cannot be null" "r"
+                        valid=false
+                        break
+                    fi
+                    ;;
+                "unique")
+                    # Ensure value is not duplicated (ignore rows being updated by awk_expr)
+                    if awk -F',' -v col="$update_pos" -v val="$new_value" \
+                        -v cond="$awk_expr" '
+                        $col == val && !(cond) {exit 1}' "$data_path"
+                    then
+                        : # ok
+                    else
+                        display "Constraint failed: '$new_value' already exists" "r"
+                        valid=false
+                        break
+                    fi
+                    ;;
+                gt-*)
+                    min_val="${constraint#gt-}"
+                    if [ "$new_value" -le "$min_val" ]; then
+                        display "Constraint failed: must be greater than $min_val" "r"
+                        valid=false
+                        break
+                    fi
+                    ;;
+                ls-*)
+                    max_val="${constraint#ls-}"
+                    if [ "$new_value" -ge "$max_val" ]; then
+                        display "Constraint failed: must be less than $max_val" "r"
+                        valid=false
+                        break
+                    fi
+                    ;;
+            esac
+        done
+    done
+
+    # Safe update with tmp file
     tmp="${data_path}.tmp"
     awk -F',' -v OFS=',' -v upos="$update_pos" -v nval="$new_value" \
         "($awk_expr){\$upos=nval} {print}" "$data_path" > "$tmp" && mv "$tmp" "$data_path"
+
     display "Update complete" "g"
     cat "$data_path"
 }
