@@ -651,7 +651,6 @@ delete_from_table () {
   schema_file="${table_name}/${table_name}_schema"
   data_file="${table_name}/${table_name}_data"
 
-  echo "call read constrains"
 
   export awk_expr=""
   read_constraints
